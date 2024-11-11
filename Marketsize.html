@@ -23,7 +23,8 @@
             const endDate = today.toISOString().split('T')[0];
             const startDate = new Date(today.setDate(today.getDate() - 180)).toISOString().split('T')[0];
 
-            const url = https://api.coindesk.com/v1/bpi/historical/close.json?start=${startDate}&end=${endDate};
+            // Corrected URL with backticks
+            const url = `https://api.coindesk.com/v1/bpi/historical/close.json?start=${startDate}&end=${endDate}`;
 
             try {
                 const response = await fetch(url);
