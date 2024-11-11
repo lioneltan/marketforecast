@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitcoin Price Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- Title -->
+    <h2 style="text-align: center; margin-bottom: 20px; font-size: 12px;">Bitcoin Price (Last 180 Days)</h2>
+
+    <!-- Chart Container -->
+    <div class="chart-container" style="width: 80%; margin: auto;">
+        <canvas id="bitcoinChart"></canvas>
+    </div>
+
+    <script>
+        // Fetch the last 180 days of Bitcoin prices from CoinDesk API
+        async function fetchBitcoinData() {
+            const today = new Date();
+            const endDate = today.toISOString().split('T')[0];
+            const startDate = new Date(today.setDate(today.getDate() - 180)).toISOString().split('T')[0];
+
+            const url = https://api.coindesk.com/v1/bpi/historical/close.json?start=${startDate}&end=${endDate};
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                return data.bpi;
+            } catch (error) {
+                console.error("Error fetching Bitcoin data:", error);
+                return null;
+            }
+        }
+
+        // Identify swing highs and swing lows
+        function calculateSwingPoints(prices, windowSize = 5) {
+            const swingHighs = [];
+            const swingLows = [];
+            for (let i = windowSize; i < prices.length - windowSize; i++) {
+                const current = prices[i];
+                const isSwingHigh = prices.slice(i - windowSize, i).every(p => current > p) &&
+                                    prices.slice(i + 1, i + windowSize + 1).every(p => current > p);
+                const isSwingLow = prices.slice(i - windowSize, i).every(p => current < p) &&
+                                   prices.slice(i + 1, i + windowSize + 1).every(p => current < p);
+
+                if (isSwingHigh) swingHighs.push({ index: i, value: current });
+                if (isSwingLow) swingLows.push({ index: i, value: current });
+            }
+
+            return { swingHighs, swingLows };
+        }
+
+        // Function to create the chart with the fetched data
+        async function createChart() {
+            const bitcoinData = await fetchBitcoinData();
+
+            if (bitcoinData) {
+                const labels = Object.keys(bitcoinData);
+                const prices = Object.values(bitcoinData);
+
+                // Calculate swing highs and lows
+                const { swingHighs, swingLows } = calculateSwingPoints(prices);
+
+                // Initialize Chart.js with a line chart
+                const ctx = document.getElementById('bitcoinChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Bitcoin Price (USD)',
+                                data: prices,
+                                borderColor: '#f7931a',
+                                backgroundColor: 'rgba(247, 147, 26, 0.1)',
+                                fill: true,
+                                tension: 0.4
+                            },
+                            {
+                                label: 'Swing Highs',
+                                data: prices.map((_, index) => {
+                                    const swingHigh = swingHighs.find(point => point.index === index);
+                                    return swingHigh ? swingHigh.value : null;
+                                }),
+                                borderColor: 'rgba(255, 0, 0, 0.5)',
+                                pointBackgroundColor: 'red',
+                                pointRadius: 4,
+                                fill: false,
+                                showLine: false
+                            },
+                            {
+                                label: 'Swing Lows',
+                                data: prices.map((_, index) => {
+                                    const swingLow = swingLows.find(point => point.index === index);
+                                    return swingLow ? swingLow.value : null;
+                                }),
+                                borderColor: 'rgba(0, 128, 0, 0.5)',
+                                pointBackgroundColor: 'green',
+                                pointRadius: 4,
+                                fill: false,
+                                showLine: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { position: 'top' },
+                        },
+                        scales: {
+                            x: { title: { display: true, text: 'Date' } },
+                            y: { title: { display: true, text: 'Price (USD)' }, beginAtZero: false }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Call the createChart function to display the chart
+        createChart();
+    </script>
+
+</body>
+</html>
